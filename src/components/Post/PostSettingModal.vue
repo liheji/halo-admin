@@ -91,11 +91,23 @@
                   style="border-radius: 4px"
                   @click="attachmentSelectVisible = true"
                 />
-                <a-input
+                <a-select
                   v-model="form.model.thumbnail"
+                  placeholder="点击封面选择库图片，或选择本文链接、或输入链接"
                   allow-clear
-                  placeholder="点击封面图选择图片，或者输入外部链接"
-                ></a-input>
+                  show-search
+                  mode="combobox"
+                >
+                  <a-select-option
+                    v-for="item in imageOptions"
+                    :key="item.value"
+                    :value="item.value"
+                    :label="item.label"
+                  >
+                    <a-avatar shape="square" :src="item.value" />
+                    <span style="margin-left: 10px">{{ item.label }}</span>
+                  </a-select-option>
+                </a-select>
               </a-space>
             </a-form-item>
           </a-form>
@@ -226,6 +238,8 @@ export default {
         wrapperCol: { sm: { span: 20 }, xs: { span: 24 } }
       },
 
+      imageOptions: [],
+
       templates: [],
 
       attachmentSelectVisible: false,
@@ -300,7 +314,8 @@ export default {
     modalVisible(value) {
       if (value) {
         this.form.model = Object.assign({}, this.post)
-
+        // TODO 修改处
+        this.imageOptions = this.parsePostImg(this.post.originalContent || '')
         if (!this.form.model.slug && !this.form.model.id) {
           this.handleGenerateSlug()
         }
@@ -310,6 +325,8 @@ export default {
       deep: true,
       handler(value) {
         this.form.model = Object.assign({}, value)
+        // TODO 修改处
+        this.imageOptions = this.parsePostImg(value.originalContent || '')
       }
     }
   },
@@ -317,6 +334,31 @@ export default {
     this.handleListCustomTemplates()
   },
   methods: {
+    parsePostImg(postContent) {
+      const regex = /(?:!\[[^\]]*\]\(([^)]+)\))|(?:<img.+?src=['"](.+?)['"].*?>)/gi
+
+      // 获取当前网址
+      const currentUrl = window.location.href
+
+      // 提取并输出图片链接
+      const links = []
+      let match
+      while ((match = regex.exec(postContent))) {
+        let url = match[1] || match[2]
+        url = new URL(url, currentUrl).href
+        links.push({
+          value: url,
+          label: this.parseImgName(url)
+        })
+      }
+      return links
+    },
+    parseImgName(url) {
+      // 通过正则表达式匹配 URL 中的最后一个路径名
+      const regExp = /\/([^/]+)\/?$/
+      const matchArr = url.match(regExp)
+      return matchArr ? matchArr[1] : '未命名图片.png'
+    },
     /**
      * Creates or updates a post
      */
